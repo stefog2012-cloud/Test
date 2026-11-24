@@ -127,6 +127,29 @@ tfoot td { font-weight: 600; border-bottom: none; }
 }
 @media print {
   header, .noprint, .del { display: none !important; }
+  @page { size: A4 landscape; margin: 12mm; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  .thumb { width: 90px; height: 60px; }
+  .thumb path { fill: #dbe7f3 !important; stroke: #1f4e79 !important; }
+  .thumb path.h-rund { fill: none !important; stroke: #16a34a !important; }
+  .thumb path.h-lang { fill: none !important; stroke: #d97706 !important; }
+  :root {
+    --bg: #fff; --card: #fff; --text: #000; --muted: #333; --line: #bbb;
+    --accent: #1f4e79; --accent2: #1f4e79; --warn: #9a4a00; --err: #b91c1c; --errbg: #fff;
+  }
+  .thumb { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #posTable { font-size: 11px; }
+  #posTable th { font-size: 9px; }
+  #posTable th, #posTable td { padding: 4px 3px; }
+  td.file { min-width: 0; max-width: 170px; font-size: 10px; }
+  td input.pos, td input.qty, td input.thk, td input.cnt { width: auto; max-width: 70px; font-size: 11px; }
+  #posTable tfoot { display: table-row-group; }
+  td.file .info, td.file .warn { font-size: 9px; max-width: none; }
+  h2, h3 { break-after: avoid; page-break-after: avoid; }
+  .card { break-inside: auto; }
+  th, td, .muted, td.file, .info { color: #000 !important; }
+  tr.errrow td { background: none; }
+  .summary .cost { color: #000; }
   body { background: #fff; color: #000; }
   .card { border: none; padding: 0; }
   td input { border: none; background: none; padding: 0; min-height: 0; }
@@ -205,7 +228,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
       <table id="posTable">
         <thead>
           <tr>
-            <th class="noprint"></th>
+            <th></th>
             <th>Pos.</th>
             <th>Datei</th>
             <th class="num">Stück</th>

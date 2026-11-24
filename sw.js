@@ -1,5 +1,5 @@
 // Offline-Cache. Bei Änderungen an der App VERSION erhöhen.
-const VERSION = 'dxfgewicht-v2';
+const VERSION = 'dxfgewicht-v3';
 const FILES = ['./', 'index.html', 'app.js', 'dxf.js', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

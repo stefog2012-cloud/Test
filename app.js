@@ -261,7 +261,7 @@
       if (!r.qtyFromName) warns.push({ t: 'Stückzahl nicht im Dateinamen – bitte prüfen', cls: 'warn' });
       const thkBad = !(r.thk > 0);
       return `<tr data-id="${r.id}" class="${r.error ? 'errrow' : ''}">
-        <td class="noprint c-thumb">${thumb(r.res)}</td>
+        <td class="c-thumb">${thumb(r.res)}</td>
         <td class="c-pos" data-l="Position"><input class="pos" data-f="pos" value="${esc(r.pos)}"></td>
         <td class="file c-file" title="${esc(r.path)}">${esc(r.name)}${warns.map(w => `<span class="${w.cls}">${esc(w.t)}</span>`).join('')}</td>
         <td class="num c-qty" data-l="Stück"><input class="qty" data-f="qty" inputmode="numeric" value="${r.qty}"></td>
@@ -281,7 +281,7 @@
   function renderSummary() {
     const t = totals();
     el.tfoot.innerHTML = rows.length ? `<tr>
-      <td class="noprint"></td><td colspan="2">Summe (${rows.length} Pos.)</td>
+      <td></td><td colspan="2">Summe (${rows.length} Pos.)</td>
       <td class="num">${t.pcs}</td><td></td>
       <td class="num" title="Bohrungen gesamt">${t.holes}</td><td class="num" title="Langlöcher gesamt">${t.slots}</td><td></td>
       <td class="num">${fmt(t.areaTot / 1e6, 3)}</td><td></td>
