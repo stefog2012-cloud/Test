@@ -486,6 +486,48 @@
     return votes * 2 > samples;
   }
 
+  // Loch klassifizieren: 'rund' (Kreis), 'lang' (Langloch/Stadion-Form) oder 'sonst'
+  function classifyHole(pts, area) {
+    const n = pts.length;
+    if (n < 6 || !(area > 0)) return { type: 'sonst' };
+    // Flächenschwerpunkt
+    let A2 = 0, cx = 0, cy = 0;
+    for (let k = 0; k < n; k++) {
+      const p = pts[k], q = pts[(k + 1) % n];
+      const cr = p[0] * q[1] - q[0] * p[1];
+      A2 += cr; cx += (p[0] + q[0]) * cr; cy += (p[1] + q[1]) * cr;
+    }
+    cx /= 3 * A2; cy /= 3 * A2;
+    // kleinster Abstand Schwerpunkt -> Kante = Radius; Hauptachse aus Linienträgheitsmoment
+    let near = Infinity, sxx = 0, syy = 0, sxy = 0;
+    for (let k = 0; k < n; k++) {
+      const p = pts[k], q = pts[(k + 1) % n];
+      const ex = q[0] - p[0], ey = q[1] - p[1], L2 = ex * ex + ey * ey, L = Math.sqrt(L2);
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((cx - p[0]) * ex + (cy - p[1]) * ey) / L2)) : 0;
+      near = Math.min(near, Math.hypot(p[0] + t * ex - cx, p[1] + t * ey - cy));
+      const ax = p[0] - cx, ay = p[1] - cy, bx = q[0] - cx, by = q[1] - cy;
+      sxx += L * (ax * ax + ax * bx + bx * bx) / 3;
+      syy += L * (ay * ay + ay * by + by * by) / 3;
+      sxy += L * (2 * ax * ay + ax * by + bx * ay + 2 * bx * by) / 6;
+    }
+    const th = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    const ux = Math.cos(th), uy = Math.sin(th);
+    let far = 0;
+    for (const p of pts) far = Math.max(far, Math.abs((p[0] - cx) * ux + (p[1] - cy) * uy));
+    const r = near, s = Math.max(0, 2 * (far - near));
+    const tol = Math.max(0.02, 0.01 * r);
+    // alle Punkte müssen auf der Stadion-Kontur liegen
+    for (const p of pts) {
+      const dx = p[0] - cx, dy = p[1] - cy;
+      const along = Math.max(-s / 2, Math.min(s / 2, dx * ux + dy * uy));
+      if (Math.abs(Math.hypot(dx - along * ux, dy - along * uy) - r) > tol) return { type: 'sonst' };
+    }
+    const expA = 2 * r * s + Math.PI * r * r;
+    if (Math.abs(expA - area) > 0.02 * area) return { type: 'sonst' };
+    if (s <= Math.max(0.05, 0.02 * r)) return { type: 'rund', d: 2 * r };
+    return { type: 'lang', w: 2 * r, l: s + 2 * r };
+  }
+
   /**
    * Berechnet die Fläche einer DXF-Datei.
    * @param {string} text DXF-Inhalt
@@ -525,12 +567,20 @@
     loops = uniq;
 
     // Verschachtelungstiefe: gerade = Material, ungerade = Loch
-    let area = 0, outer = 0, holes = 0;
+    let area = 0, outer = 0, holes = 0, round = 0, slots = 0, other = 0;
+    const holeList = [];
     for (let k = 0; k < loops.length; k++) {
       let depth = 0;
       for (let j = 0; j < k; j++) if (contains(loops[j], loops[k])) depth++;
       loops[k].depth = depth;
-      if (depth % 2 === 0) { area += loops[k].area; outer++; } else { area -= loops[k].area; holes++; }
+      if (depth % 2 === 0) { area += loops[k].area; outer++; }
+      else {
+        area -= loops[k].area; holes++;
+        const c = classifyHole(loops[k].pts, loops[k].area);
+        loops[k].hole = c.type;
+        holeList.push(c);
+        if (c.type === 'rund') round++; else if (c.type === 'lang') slots++; else other++;
+      }
     }
 
     const warnings = [];
@@ -543,10 +593,10 @@
       bb = loops.filter(l => l.depth === 0).map(l => l.bb).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
     }
     return {
-      area, outer, holes,
+      area, outer, holes, round, slots, other, holeList,
       width: bb[2] - bb[0], height: bb[3] - bb[1], bbox: bb,
       unclosed: ch.unclosed.length,
-      loops: loops.map(l => ({ pts: l.pts, depth: l.depth })),
+      loops: loops.map(l => ({ pts: l.pts, depth: l.depth, hole: l.hole })),
       unitFactor: f,
       warnings
     };

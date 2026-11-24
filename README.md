@@ -14,6 +14,12 @@ Gesamtgewicht, Verschnitt und Kosten.
 - Außenkontur minus Innenkonturen (Bohrungen, Ausschnitte) = Netto-Fläche.
   Unterstützt LINE, ARC, CIRCLE, LWPOLYLINE/POLYLINE (inkl. Bögen), ELLIPSE, SPLINE und Blöcke (INSERT).
   Linien und Bögen werden automatisch zu geschlossenen Konturen verbunden, doppelte Konturen entfernt.
+- **Auftragsname** wird aus dem Ordnernamen übernommen (änderbar) und erscheint im Ausdruck und im CSV-Dateinamen.
+- **Bohrungen und Langlöcher** werden automatisch erkannt, egal ob als Kreis, aus Bögen/Linien oder als Polylinie
+  gezeichnet. Rechteckige oder sonstige Ausschnitte zählen nicht dazu. Anzahl je Stück ist in der Tabelle änderbar.
+  Im Vorschaubild sind Bohrungen grün und Langlöcher orange markiert.
+- **Aufpreis je Bohrung** und **je Langloch** frei eingebbar; im Gesamtpreis werden Anzahl und Kosten einzeln aufgeführt.
+- **Zusammenfassung nach Materialstärke** (Stück, Fläche, Gewicht, Gewicht inkl. Verschnitt).
 - Gewicht = Fläche × Stärke × spezifisches Gewicht (Materialauswahl oder eigener Wert in kg/dm³).
 - Tabelle aller Positionen mit Vorschaubild, Summe unten.
 - **Verschnitt in %** und **Kosten in €/kg oder €/t** frei eingebbar.

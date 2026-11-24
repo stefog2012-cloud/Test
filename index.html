@@ -36,7 +36,7 @@ header { background: var(--accent); color: #fff; padding: 14px 16px; }
 @media (prefers-color-scheme: dark) { header { background: #1f3550; } }
 header h1 { margin: 0; font-size: 20px; font-weight: 650; }
 header p { margin: 2px 0 0; opacity: .85; font-size: 13px; }
-main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+main { max-width: 1440px; margin: 0 auto; padding: 16px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
 .card h2 { margin: 0 0 10px; font-size: 16px; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -68,10 +68,19 @@ th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: upp
 td.num, th.num { text-align: right; }
 td input { min-height: 36px; padding: 6px 8px; }
 td input.qty { width: 64px; text-align: right; }
-td input.thk { width: 74px; text-align: right; }
-td input.pos { width: 90px; }
+td input.thk { width: 64px; text-align: right; }
+td input.pos { width: 80px; }
+td input.cnt { width: 48px; text-align: right; }
+h3.sub { font-size: 14px; margin: 14px 0 6px; color: var(--muted); font-weight: 600; }
+table.bythk { max-width: 620px; }
+table.bythk tfoot td { border-top: 2px solid var(--text); }
+.summary .sep { grid-column: 1 / -1; border-top: 1px solid var(--line); margin: 4px 0; }
+.thumb path.h-rund { fill: none; stroke: #16a34a; stroke-width: 2; }
+.thumb path.h-lang { fill: none; stroke: #d97706; stroke-width: 2; }
 td input.bad { border-color: var(--err); background: var(--errbg); }
-td.file { max-width: 220px; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 13px; }
+td.file { min-width: 170px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
+th { white-space: normal; }
+#posTable th, #posTable td { padding: 6px 5px; }
 .thumb { width: 64px; height: 44px; display: block; }
 .thumb path { fill: var(--partfill); stroke: var(--part); stroke-width: 1.2; vector-effect: non-scaling-stroke; fill-rule: evenodd; }
 .info { color: var(--muted); font-size: 12px; white-space: normal; display: block; }
@@ -89,8 +98,8 @@ tfoot td { font-weight: 600; border-bottom: none; }
 .status { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
 /* Handy: Positionen als Karten */
 @media (max-width: 720px) {
-  thead { display: none; }
-  table, tbody, tfoot { display: block; }
+  #posTable thead { display: none; }
+  #posTable, #posTable tbody { display: block; }
   #tbody tr {
     display: grid; grid-template-columns: 64px 1fr 1fr 32px; gap: 4px 10px;
     border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px;
@@ -105,11 +114,16 @@ tfoot td { font-weight: 600; border-bottom: none; }
   #tbody td.c-qty { grid-column: 1 / 3; grid-row: 3; }
   #tbody td.c-thk { grid-column: 3 / 5; grid-row: 3; }
   #tbody td.c-qty input, #tbody td.c-thk input { width: 100%; text-align: left; }
-  #tbody td.c-dim { grid-column: 1 / 3; grid-row: 4; }
-  #tbody td.c-area { grid-column: 3 / 5; grid-row: 4; }
-  #tbody td.c-pc { grid-column: 1 / 3; grid-row: 5; }
-  #tbody td.c-tot { grid-column: 3 / 5; grid-row: 5; font-size: 16px; }
-  tfoot { display: none !important; }
+  #tbody td.c-hole { grid-column: 1 / 3; grid-row: 4; }
+  #tbody td.c-slot { grid-column: 3 / 5; grid-row: 4; }
+  #tbody td.c-hole input, #tbody td.c-slot input { width: 100%; text-align: left; }
+  #tbody td.c-dim { grid-column: 1 / 3; grid-row: 5; }
+  #tbody td.c-area { grid-column: 3 / 5; grid-row: 5; }
+  #tbody td.c-pc { grid-column: 1 / 3; grid-row: 6; }
+  #tbody td.c-tot { grid-column: 3 / 5; grid-row: 6; font-size: 16px; }
+  #tfoot { display: none !important; }
+  table.bythk .c-a { display: none; }
+  table.bythk th, table.bythk td { padding: 6px 4px; }
 }
 @media print {
   header, .noprint, .del { display: none !important; }
@@ -130,6 +144,9 @@ tfoot td { font-weight: 600; border-bottom: none; }
 <main>
   <section class="card noprint">
     <h2>1. DXF-Dateien laden</h2>
+    <label class="f" style="margin-bottom:10px">Auftrag (wird aus dem Ordnernamen übernommen)
+      <input id="order" type="text" placeholder="Auftragsname">
+    </label>
     <div class="row">
       <label class="btn" for="dirInput">📁 Ordner wählen</label>
       <input id="dirInput" type="file" webkitdirectory directory multiple>
@@ -163,6 +180,12 @@ tfoot td { font-weight: 600; border-bottom: none; }
           <select id="costUnit"><option value="kg">€/kg</option><option value="t">€/t</option></select>
         </span>
       </label>
+      <label class="f">Aufpreis je Bohrung (€/Stk)
+        <input id="priceHole" type="text" inputmode="decimal">
+      </label>
+      <label class="f">Aufpreis je Langloch (€/Stk)
+        <input id="priceSlot" type="text" inputmode="decimal">
+      </label>
       <label class="f">Layer der Kontur
         <input id="layer" type="text">
       </label>
@@ -179,7 +202,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
       </div>
     </div>
     <div class="tablewrap">
-      <table>
+      <table id="posTable">
         <thead>
           <tr>
             <th class="noprint"></th>
@@ -187,6 +210,8 @@ tfoot td { font-weight: 600; border-bottom: none; }
             <th>Datei</th>
             <th class="num">Stück</th>
             <th class="num">Stärke mm</th>
+            <th class="num" title="Rundlöcher je Stück">Bohr./Stk</th>
+            <th class="num" title="Langlöcher je Stück">Langl./Stk</th>
             <th class="num">Abmessung mm</th>
             <th class="num">Fläche/Stk m²</th>
             <th class="num">Gewicht/Stk kg</th>
@@ -203,6 +228,9 @@ tfoot td { font-weight: 600; border-bottom: none; }
 
   <section class="card">
     <h2>4. Ergebnis</h2>
+    <h3 class="sub">Zusammenfassung nach Materialstärke</h3>
+    <div class="tablewrap"><table class="bythk" id="byThk"></table></div>
+    <h3 class="sub">Gesamt</h3>
     <div class="summary" id="summary"></div>
   </section>
 </main>
