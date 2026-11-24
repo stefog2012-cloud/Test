@@ -7,6 +7,11 @@ Gesamtgewicht, Verschnitt und Kosten.
 ## Funktionen
 
 - **Ordner wählen** (Windows/Android) oder **Dateien wählen** (iPhone/iPad), alternativ Drag & Drop.
+- **ZIP-Dateien** (z. B. per WhatsApp verschickte Aufträge) werden direkt geöffnet und entpackt.
+  Auftragsname = Ordner im ZIP bzw. ZIP-Dateiname. Ein neues ZIP ersetzt die bisherige Liste.
+- **Android:** Die installierte App erscheint im Teilen-Menü. In WhatsApp die ZIP-Datei antippen/gedrückt halten →
+  *Teilen* → **DXF Gewicht**. Die App öffnet sich und rechnet sofort.
+  **iPhone:** ZIP in WhatsApp öffnen → Teilen → *In Dateien sichern*, dann in der App „Dateien / ZIP wählen“.
 - Liest aus dem Dateinamen **Stückzahl, Position und Materialstärke**:
   `5x_Pos_123_10mm.dxf` → 5 Stück, Pos. 123, 10 mm
   (auch `2,5mm`, `Pos_7a`, `5stk` usw.). Fehlende Werte können in der Tabelle ergänzt werden.
@@ -52,7 +57,7 @@ Alternativ kann der Ordner auf jeden anderen Webserver kopiert werden (z. B. Net
 | `index.html` | Oberfläche |
 | `app.js` | Tabelle, Berechnung, Export |
 | `dxf.js` | DXF-Parser und Flächenberechnung |
-| `lib/` | jsPDF und jsPDF-AutoTable (MIT-Lizenz) für den PDF-Export |
+| `lib/` | fflate (ZIP), jsPDF und jsPDF-AutoTable (alle MIT-Lizenz) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline-Fähigkeit / Installation |
 
 ## Hinweise

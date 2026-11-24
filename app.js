@@ -95,8 +95,57 @@
   }
 
   // ---------- Dateien laden ----------
+  // ---------- ZIP ----------
+  // Windows-Explorer speichert Dateinamen in ZIPs meist im DOS-Zeichensatz (CP850)
+  const CP850 = 'ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´\u00AD±‗¾¶§÷¸°¨·¹³²■\u00A0';
+  function fixName(n) {
+    if (!/[\u0080-\u009F]/.test(n)) return n; // korrekt als UTF-8 gelesen
+    return n.replace(/[\u0080-\u00FF]/g, ch => CP850[ch.charCodeAt(0) - 128]);
+  }
+
+  async function expandZip(zipFile) {
+    if (!window.fflate) throw new Error('ZIP-Funktion konnte nicht geladen werden.');
+    const buf = new Uint8Array(await zipFile.arrayBuffer());
+    const entries = window.fflate.unzipSync(buf, {
+      filter: (f) => /\.dxf$/i.test(f.name) && !/(^|\/)(__MACOSX\/|\._)/.test(f.name)
+    });
+    let names = Object.keys(entries).map(raw => ({ raw, path: fixName(raw).replace(/\\/g, '/') }));
+    // gemeinsamer Oberordner im ZIP -> Auftragsname, sonst ZIP-Dateiname
+    const tops = new Set(names.map(n => n.path.includes('/') ? n.path.split('/')[0] : ''));
+    const zipBase = zipFile.name.replace(/\.zip$/i, '');
+    let order = zipBase, strip = '';
+    if (tops.size === 1 && !tops.has('')) { strip = [...tops][0] + '/'; order = [...tops][0]; }
+    return names.map(n => {
+      const rel = n.path.slice(strip.length);
+      const f = new File([entries[n.raw]], rel.split('/').pop(), { type: 'application/dxf' });
+      f.relPath = order + '/' + rel;
+      f.zipOrder = order;
+      return f;
+    });
+  }
+
   async function addFiles(fileList) {
-    const files = Array.from(fileList).filter(f => /\.dxf$/i.test(f.name));
+    let input = Array.from(fileList);
+    const zips = input.filter(f => /\.zip$/i.test(f.name) || /zip/i.test(f.type || ''));
+    if (zips.length) {
+      const fromZip = [];
+      for (const z of zips) {
+        try {
+          setStatus(`Entpacke ${z.name} …`);
+          fromZip.push(...await expandZip(z));
+        } catch (e) {
+          setStatus(`ZIP „${z.name}“ konnte nicht gelesen werden: ${e.message || e}`);
+          return;
+        }
+      }
+      if (!fromZip.length) { setStatus('Im ZIP wurden keine DXF-Dateien gefunden.'); return; }
+      // ein ZIP = ein neuer Auftrag: bisherige Liste ersetzen
+      rows = [];
+      orderAuto = true;
+      el.order.value = '';
+      input = input.filter(f => !zips.includes(f)).concat(fromZip);
+    }
+    const files = input.filter(f => /\.dxf$/i.test(f.name));
     if (!files.length) { setStatus('Keine DXF-Dateien gefunden.'); return; }
     setOrderFromFiles(files);
     setStatus(`Lese ${files.length} Datei(en) …`);
@@ -120,7 +169,7 @@
     }
     sortRows();
     const errs = rows.filter(r => r.error).length;
-    setStatus(`${n} Datei(en) geladen. ${rows.length} Positionen gesamt.` + (errs ? ` ${errs} mit Fehler.` : ''));
+    setStatus((zips.length ? `ZIP entpackt: ` : '') + `${n} Datei(en) geladen. ${rows.length} Positionen gesamt.` + (errs ? ` ${errs} mit Fehler.` : ''));
     render();
   }
 
@@ -571,9 +620,28 @@
     doc.save(name);
   });
 
+  // ---------- Teilen-Ziel (Android: aus WhatsApp o. ä. an die App teilen) ----------
+  async function loadShared() {
+    if (!/[?&]share=1/.test(location.search) || !('caches' in window)) return;
+    history.replaceState(null, '', location.pathname);
+    try {
+      const cache = await caches.open('share-inbox');
+      const files = [];
+      for (const req of await cache.keys()) {
+        const res = await cache.match(req);
+        const blob = await res.blob();
+        files.push(new File([blob], decodeURIComponent(res.headers.get('x-name') || 'datei'), { type: blob.type }));
+        await cache.delete(req);
+      }
+      if (files.length) addFiles(files);
+      else setStatus('Keine geteilten Dateien empfangen.');
+    } catch (e) { setStatus('Geteilte Dateien konnten nicht gelesen werden.'); }
+  }
+
   // ---------- Start ----------
   loadSettings();
   render();
+  loadShared();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }

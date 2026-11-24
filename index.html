@@ -178,14 +178,14 @@ tfoot td { font-weight: 600; border-bottom: none; }
     <div class="row">
       <label class="btn" for="dirInput">📁 Ordner wählen</label>
       <input id="dirInput" type="file" webkitdirectory directory multiple>
-      <label class="btn secondary" for="fileInput">📄 Dateien wählen</label>
-      <input id="fileInput" type="file" multiple accept=".dxf,.DXF,application/dxf,image/vnd.dxf,application/octet-stream">
+      <label class="btn secondary" for="fileInput">📄 Dateien / ZIP wählen</label>
+      <input id="fileInput" type="file" multiple accept=".dxf,.DXF,.zip,.ZIP,application/dxf,image/vnd.dxf,application/zip,application/x-zip-compressed,application/octet-stream">
       <button id="clearBtn" class="secondary" type="button">Liste leeren</button>
     </div>
-    <div id="drop" class="drop">DXF-Dateien oder Ordner hierher ziehen</div>
+    <div id="drop" class="drop">DXF-Dateien, ZIP-Datei oder Ordner hierher ziehen</div>
     <div class="muted" style="margin-top:8px">
       Dateiname-Schema: <b>5x_Pos_123_10mm.dxf</b> → 5 Stück, Position 123, 10 mm.
-      Auf dem iPhone/iPad: „Dateien wählen“ und im Ordner alle Dateien markieren.
+      ZIP-Dateien (z. B. aus WhatsApp) werden automatisch entpackt, der Auftragsname kommt aus dem ZIP-Namen. Android: in WhatsApp die ZIP-Datei teilen → „DXF Gewicht“.
     </div>
     <div id="status" class="status"></div>
   </section>
@@ -263,6 +263,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
     <div class="summary" id="summary"></div>
   </section>
 </main>
+<script src="lib/fflate.min.js"></script>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jspdf.plugin.autotable.min.js"></script>
 <script src="firma.js"></script>
