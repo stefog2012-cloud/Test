@@ -19,7 +19,7 @@
     order: $('order'), priceHole: $('priceHole'), priceSlot: $('priceSlot'), byThk: $('byThk'),
     material: $('material'), density: $('density'), scrap: $('scrap'), cost: $('cost'), costUnit: $('costUnit'), layer: $('layer'),
     tbody: $('tbody'), tfoot: $('tfoot'), empty: $('empty'), summary: $('summary'),
-    csv: $('csvBtn'), print: $('printBtn'), printinfo: $('printinfo')
+    csv: $('csvBtn'), pdf: $('pdfBtn'), print: $('printBtn'), printinfo: $('printinfo')
   };
 
   let rows = []; // {id, file, text, pos, qty, thk, res, error}
@@ -372,6 +372,172 @@
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   });
   el.print.addEventListener('click', () => window.print());
+
+  // ---------- PDF ----------
+  function drawThumbPdf(doc, res, x, y, w, h) {
+    if (!res || !res.loops.length) return;
+    const [x0, y0, x1, y1] = res.bbox;
+    const bw = Math.max(x1 - x0, 1e-6), bh = Math.max(y1 - y0, 1e-6);
+    const sc = Math.min(w / bw, h / bh);
+    const ox = x + (w - bw * sc) / 2, oy = y + (h - bh * sc) / 2;
+    const P = (p) => [ox + (p[0] - x0) * sc, oy + (y1 - p[1]) * sc];
+    const trace = (l) => {
+      const step = Math.max(1, Math.floor(l.pts.length / 150));
+      let first = true;
+      for (let k = 0; k < l.pts.length; k += step) {
+        const q = P(l.pts[k]);
+        if (first) { doc.moveTo(q[0], q[1]); first = false; } else doc.lineTo(q[0], q[1]);
+      }
+      doc.close();
+    };
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(31, 78, 121);
+    doc.setFillColor(219, 231, 243);
+    res.loops.forEach(trace);
+    doc.fillStrokeEvenOdd();
+    for (const [type, col] of [['rund', [22, 163, 74]], ['lang', [217, 119, 6]]]) {
+      const ls = res.loops.filter(l => l.hole === type);
+      if (!ls.length) continue;
+      doc.setLineWidth(0.4);
+      doc.setDrawColor(col[0], col[1], col[2]);
+      ls.forEach(trace);
+      doc.stroke();
+    }
+  }
+
+  function holeText(r) {
+    if (!r.res || r.error) return r.error || '';
+    const parts = [];
+    const hl = r.res.holeList || [];
+    if (r.res.round) parts.push(r.res.round + ' Bohr. ' + dims(hl.filter(h => h.type === 'rund').map(h => 'Ø' + fmt(h.d, 1))));
+    if (r.res.slots) parts.push(r.res.slots + ' Langl. ' + dims(hl.filter(h => h.type === 'lang').map(h => fmt(h.l, 1) + '×' + fmt(h.w, 1))));
+    if (r.res.other) parts.push(r.res.other + ' sonst. Ausschnitt(e)');
+    return parts.join(', ');
+  }
+
+  function buildPdf() {
+    const { jsPDF } = window.jspdf;
+    const AT = window.jspdf_autotable || {};
+    const autoTable = AT.autoTable || AT.default || ((d, o) => d.autoTable(o));
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const t = totals();
+    const order = el.order.value.trim();
+    const m = MATERIALS[+el.material.value];
+    const unit = el.costUnit.value === 't' ? 't' : 'kg';
+    const W = doc.internal.pageSize.getWidth();
+    const M = 12;
+    const blue = [31, 78, 121];
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+    doc.text(order ? 'Auftrag: ' + order : 'DXF Gewichtsberechnung', M, 16);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text(new Date().toLocaleDateString('de-DE'), W - M, 16, { align: 'right' });
+    doc.text(`Material: ${m.d ? m.name : 'Benutzerdefiniert'}  ·  spez. Gewicht ${el.density.value} kg/dm³  ·  Verschnitt ${fmt(t.scrapP, t.scrapP % 1 ? 1 : 0)} %  ·  ` +
+      `Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €`, M, 22);
+
+    const head = [['Bild', 'Pos.', 'Datei / Ausschnitte', 'Stück', 'Stärke\nmm', 'Bohr.\n/Stk', 'Langl.\n/Stk', 'Abmessung\nmm', 'Fläche/Stk\nm²', 'Gewicht/Stk\nkg', 'Gesamt\nkg']];
+    const body = rows.map(r => {
+      const c = calcRow(r);
+      const info = holeText(r);
+      return ['', String(r.pos), r.name + (info ? '\n' + info : ''), r.qty, r.thk > 0 ? fmt(r.thk, r.thk % 1 ? 2 : 0) : '–',
+        r.nHole || 0, r.nSlot || 0,
+        r.res && !r.error ? fmt(r.res.width, 1) + ' × ' + fmt(r.res.height, 1) : '–',
+        fmt(c.area / 1e6, 4), fmt(c.kgPc, 3), fmt(c.kgTot, 2)];
+    });
+    const foot = [['', 'Summe', rows.length + ' Positionen', t.pcs, '', t.holes, t.slots, '', fmt(t.areaTot / 1e6, 3), '', fmt(t.kg, 2)]];
+    const right = { halign: 'right' };
+    autoTable(doc, {
+      startY: 26, head, body, foot, theme: 'grid', showFoot: 'lastPage',
+      margin: { left: M, right: M, bottom: 14 },
+      styles: { fontSize: 8, cellPadding: 1.5, valign: 'middle', lineColor: [200, 200, 200], lineWidth: 0.1 },
+      headStyles: { fillColor: blue, textColor: 255, fontSize: 7.5, valign: 'middle' },
+      footStyles: { fillColor: [235, 240, 246], textColor: 0, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 26, minCellHeight: 17 }, 1: { cellWidth: 18 }, 2: { cellWidth: 70, fontSize: 7 },
+        3: right, 4: right, 5: right, 6: right, 7: right, 8: right, 9: right, 10: { halign: 'right', fontStyle: 'bold' }
+      },
+      rowPageBreak: 'avoid',
+      didParseCell: (d) => { if (d.column.index >= 3) d.cell.styles.halign = 'right'; },
+      didDrawCell: (d) => {
+        if (d.section === 'body' && d.column.index === 0) {
+          const r = rows[d.row.index];
+          drawThumbPdf(doc, r && r.res, d.cell.x + 1.5, d.cell.y + 1.5, d.cell.width - 3, d.cell.height - 3);
+        }
+      }
+    });
+
+    let y = doc.lastAutoTable.finalY + 8;
+    if (y > doc.internal.pageSize.getHeight() - 70) { doc.addPage(); y = 16; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    doc.text('Zusammenfassung nach Materialstärke', M, y);
+    autoTable(doc, {
+      startY: y + 2, theme: 'striped', margin: { left: M, right: W / 2 + 4 }, tableWidth: W / 2 - M - 4,
+      styles: { fontSize: 8.5, cellPadding: 1.5 }, headStyles: { fillColor: blue, halign: 'right' },
+      footStyles: { fillColor: [235, 240, 246], textColor: 0, fontStyle: 'bold' },
+      columnStyles: { 0: { halign: 'right', fontStyle: 'bold' }, 1: right, 2: right, 3: right, 4: right, 5: { halign: 'right', fontStyle: 'bold' } },
+      head: [['Stärke', 'Pos.', 'Stück', 'Fläche m²', 'Gewicht kg', 'inkl. Verschn. kg']],
+      body: t.byThk.map(g => [fmt(g.thk, g.thk % 1 ? 2 : 0) + ' mm', g.pos, g.pcs, fmt(g.area / 1e6, 3), fmt(g.kg, 2), fmt(g.gross, 2)]),
+      didParseCell: (d) => { d.cell.styles.halign = 'right'; },
+      foot: [['Summe', t.byThk.reduce((a, g) => a + g.pos, 0), t.pcs, fmt(t.areaTot / 1e6, 3), fmt(t.kg, 2), fmt(t.gross, 2)]]
+    });
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
+    doc.text('Gesamt', W / 2 + 8, y);
+    const sumRows = [
+      ['Gesamtgewicht Bauteile (' + t.pcs + ' Stk.)', fmt(t.kg, 2) + ' kg'],
+      ['Verschnitt ' + fmt(t.scrapP, t.scrapP % 1 ? 1 : 0) + ' %', '+ ' + fmt(t.scrapKg, 2) + ' kg'],
+      ['Gesamtgewicht inkl. Verschnitt', fmt(t.gross, 2) + ' kg'],
+      ['Material: ' + fmt(t.gross, 2) + ' kg × ' + fmt(t.price, 2) + ' €/' + unit, fmt(t.matCost, 2) + ' €'],
+      ['Bohrungen: ' + t.holes + ' Stk × ' + fmt(t.pHole, 2) + ' €', fmt(t.holeCost, 2) + ' €'],
+      ['Langlöcher: ' + t.slots + ' Stk × ' + fmt(t.pSlot, 2) + ' €', fmt(t.slotCost, 2) + ' €'],
+      ['Gesamtpreis', fmt(t.cost, 2) + ' €']
+    ];
+    autoTable(doc, {
+      startY: y + 2, theme: 'plain', margin: { left: W / 2 + 8, right: M },
+      styles: { fontSize: 9, cellPadding: 1.6 },
+      columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
+      body: sumRows,
+      didParseCell: (d) => {
+        if (d.row.index === 2 || d.row.index === 6) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fontSize = 11; }
+        if (d.row.index === 6) { d.cell.styles.fillColor = [235, 240, 246]; d.cell.styles.textColor = blue; }
+      }
+    });
+    if (t.bad) {
+      doc.setFontSize(8); doc.setTextColor(185, 28, 28);
+      doc.text(`Achtung: ${t.bad} Position(en) ohne gültige Fläche/Stärke sind nicht im Gewicht enthalten.`, M, doc.lastAutoTable.finalY + 6);
+      doc.setTextColor(0);
+    }
+
+    const pages = doc.getNumberOfPages();
+    for (let i = 1; i <= pages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120);
+      const H = doc.internal.pageSize.getHeight();
+      doc.text((order ? order + '  ·  ' : '') + 'DXF Gewichtsrechner', M, H - 7);
+      doc.text(`Seite ${i} von ${pages}`, W - M, H - 7, { align: 'right' });
+      doc.setTextColor(0);
+    }
+    return doc;
+  }
+
+  el.pdf.addEventListener('click', async () => {
+    if (!rows.length) return;
+    if (!window.jspdf) { alert('PDF-Funktion konnte nicht geladen werden.'); return; }
+    const order = el.order.value.trim().replace(/[\\/:*?"<>|]+/g, '_');
+    const name = (order || 'DXF_Gewicht') + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+    let doc;
+    try { doc = buildPdf(); } catch (e) { alert('PDF-Fehler: ' + (e.message || e)); return; }
+    // iPhone/iPad: über das Teilen-Menü speichern ("In Dateien sichern"), sonst normaler Download
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios && navigator.canShare) {
+      const file = new File([doc.output('blob')], name, { type: 'application/pdf' });
+      if (navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: name }); return; }
+        catch (e) { if (e.name === 'AbortError') return; }
+      }
+    }
+    doc.save(name);
+  });
 
   // ---------- Start ----------
   loadSettings();

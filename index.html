@@ -97,7 +97,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
 .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
 .status { font-size: 13px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
 /* Handy: Positionen als Karten */
-@media (max-width: 720px) {
+@media screen and (max-width: 720px) {
   #posTable thead { display: none; }
   #posTable, #posTable tbody { display: block; }
   #tbody tr {
@@ -107,6 +107,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
   #tbody td { border: none; padding: 0; white-space: normal; text-align: left; }
   #tbody td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; }
   #tbody td.c-thumb { grid-column: 1; grid-row: 1 / 3; }
+  #tbody td.c-thumb .thumb { max-width: 100%; }
   #tbody td.c-pos { grid-column: 2 / 4; grid-row: 1; }
   #tbody td.c-pos input { width: 100%; }
   #tbody td.c-del { grid-column: 4; grid-row: 1; text-align: right; }
@@ -220,6 +221,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
     <div class="row noprint" style="justify-content:space-between;margin-bottom:8px">
       <h2 style="margin:0">3. Positionen</h2>
       <div class="row">
+        <button id="pdfBtn" type="button">📄 PDF speichern</button>
         <button id="csvBtn" class="secondary" type="button">⬇ CSV / Excel</button>
         <button id="printBtn" class="secondary" type="button">🖨 Drucken / PDF</button>
       </div>
@@ -257,6 +259,8 @@ tfoot td { font-weight: 600; border-bottom: none; }
     <div class="summary" id="summary"></div>
   </section>
 </main>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/jspdf.plugin.autotable.min.js"></script>
 <script src="dxf.js"></script>
 <script src="app.js"></script>
 </body>

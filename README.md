@@ -23,7 +23,9 @@ Gesamtgewicht, Verschnitt und Kosten.
 - Gewicht = Fläche × Stärke × spezifisches Gewicht (Materialauswahl oder eigener Wert in kg/dm³).
 - Tabelle aller Positionen mit Vorschaubild, Summe unten.
 - **Verschnitt in %** und **Kosten in €/kg oder €/t** frei eingebbar.
-- Export als **CSV (Excel)** und **Drucken / PDF**.
+- **PDF speichern**: erzeugt ein fertiges PDF (A4 quer) mit Vorschaubildern, Zusammenfassung und Gesamtpreis.
+  Am iPhone/iPad öffnet sich das Teilen-Menü („In Dateien sichern“), sonst wird die Datei heruntergeladen.
+- Export als **CSV (Excel)** und **Drucken**.
 - Einstellungen werden gespeichert, Berechnung erfolgt komplett lokal (keine Daten verlassen das Gerät).
 
 ## Benutzung
@@ -50,6 +52,7 @@ Alternativ kann der Ordner auf jeden anderen Webserver kopiert werden (z. B. Net
 | `index.html` | Oberfläche |
 | `app.js` | Tabelle, Berechnung, Export |
 | `dxf.js` | DXF-Parser und Flächenberechnung |
+| `lib/` | jsPDF und jsPDF-AutoTable (MIT-Lizenz) für den PDF-Export |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Offline-Fähigkeit / Installation |
 
 ## Hinweise
