@@ -158,6 +158,10 @@ tfoot td { font-weight: 600; border-bottom: none; }
   .printinfo { display: block !important; }
 }
 .printinfo { display: none; margin-bottom: 10px; }
+.briefkopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;
+  border-bottom: 2px solid #1f4e79; padding-bottom: 8px; margin-bottom: 12px; }
+.briefkopf img { max-height: 22mm; max-width: 75mm; object-fit: contain; }
+.briefkopf .adr { text-align: right; font-size: 11px; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -261,6 +265,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
 </main>
 <script src="lib/jspdf.umd.min.js"></script>
 <script src="lib/jspdf.plugin.autotable.min.js"></script>
+<script src="firma.js"></script>
 <script src="dxf.js"></script>
 <script src="app.js"></script>
 </body>

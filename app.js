@@ -314,7 +314,11 @@
       : '<tbody><tr><td class="muted">–</td></tr></tbody>';
     const m = MATERIALS[+el.material.value];
     const order = el.order.value.trim();
-    el.printinfo.innerHTML = `<b style="font-size:18px">${order ? 'Auftrag: ' + esc(order) : 'DXF Gewichtsberechnung'}</b><br>${new Date().toLocaleDateString('de-DE')}<br>
+    const F = window.FIRMA || {};
+    const adr = (F.adresse || []).filter(Boolean);
+    const kopf = (F.logo || adr.length) ? `<div class="briefkopf">${F.logo ? `<img src="${F.logo}" alt="">` : '<span></span>'}` +
+      `<div class="adr">${adr.map((l, i) => i === 0 ? `<b>${esc(l)}</b>` : esc(l)).join('<br>')}</div></div>` : '';
+    el.printinfo.innerHTML = kopf + `<b style="font-size:18px">${order ? 'Auftrag: ' + esc(order) : 'DXF Gewichtsberechnung'}</b><br>${new Date().toLocaleDateString('de-DE')}<br>
       Material: ${esc(m.d ? m.name : 'Benutzerdefiniert')}, spez. Gewicht ${esc(el.density.value)} kg/dm³`;
   }
 
@@ -428,12 +432,40 @@
     const M = 12;
     const blue = [31, 78, 121];
 
+    // Briefkopf: Logo links, Adresse rechts (aus firma.js)
+    const F = window.FIRMA || {};
+    const adr = (F.adresse || []).filter(Boolean);
+    let top = 10, headH = 0;
+    if (F.logo) {
+      try {
+        const ip = doc.getImageProperties(F.logo);
+        let lh = 20, lw = lh * ip.width / ip.height;
+        if (lw > 75) { lw = 75; lh = lw * ip.height / ip.width; }
+        doc.addImage(F.logo, ip.fileType, M, top, lw, lh);
+        headH = lh;
+      } catch (e) { /* Logo fehlerhaft -> ohne Logo */ }
+    }
+    if (adr.length) {
+      doc.setFontSize(9);
+      adr.forEach((line, i) => {
+        doc.setFont('helvetica', i === 0 ? 'bold' : 'normal');
+        doc.text(String(line), W - M, top + 3.5 + i * 4.2, { align: 'right' });
+      });
+      headH = Math.max(headH, adr.length * 4.2 + 1);
+    }
+    let ty = 16;
+    if (headH) {
+      const ly = top + headH + 3;
+      doc.setDrawColor(31, 78, 121); doc.setLineWidth(0.4);
+      doc.line(M, ly, W - M, ly);
+      ty = ly + 8;
+    }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-    doc.text(order ? 'Auftrag: ' + order : 'DXF Gewichtsberechnung', M, 16);
+    doc.text(order ? 'Auftrag: ' + order : 'DXF Gewichtsberechnung', M, ty);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text(new Date().toLocaleDateString('de-DE'), W - M, 16, { align: 'right' });
+    doc.text(new Date().toLocaleDateString('de-DE'), W - M, ty, { align: 'right' });
     doc.text(`Material: ${m.d ? m.name : 'Benutzerdefiniert'}  ·  spez. Gewicht ${el.density.value} kg/dm³  ·  Verschnitt ${fmt(t.scrapP, t.scrapP % 1 ? 1 : 0)} %  ·  ` +
-      `Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €`, M, 22);
+      `Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €`, M, ty + 6);
 
     const head = [['Bild', 'Pos.', 'Datei / Ausschnitte', 'Stück', 'Stärke\nmm', 'Bohr.\n/Stk', 'Langl.\n/Stk', 'Abmessung\nmm', 'Fläche/Stk\nm²', 'Gewicht/Stk\nkg', 'Gesamt\nkg']];
     const body = rows.map(r => {
@@ -447,7 +479,7 @@
     const foot = [['', 'Summe', rows.length + ' Positionen', t.pcs, '', t.holes, t.slots, '', fmt(t.areaTot / 1e6, 3), '', fmt(t.kg, 2)]];
     const right = { halign: 'right' };
     autoTable(doc, {
-      startY: 26, head, body, foot, theme: 'grid', showFoot: 'lastPage',
+      startY: ty + 10, head, body, foot, theme: 'grid', showFoot: 'lastPage',
       margin: { left: M, right: M, bottom: 14 },
       styles: { fontSize: 8, cellPadding: 1.5, valign: 'middle', lineColor: [200, 200, 200], lineWidth: 0.1 },
       headStyles: { fillColor: blue, textColor: 255, fontSize: 7.5, valign: 'middle' },
