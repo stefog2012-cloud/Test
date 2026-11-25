@@ -16,7 +16,8 @@
   const $ = (id) => document.getElementById(id);
   const el = {
     dir: $('dirInput'), files: $('fileInput'), clear: $('clearBtn'), drop: $('drop'), status: $('status'),
-    order: $('order'), priceHole: $('priceHole'), priceSlot: $('priceSlot'), byThk: $('byThk'),
+    order: $('order'), note: $('note'), bends: $('bends'), priceBend: $('priceBend'), dataPrep: $('dataPrep'),
+    priceHole: $('priceHole'), priceSlot: $('priceSlot'), byThk: $('byThk'),
     material: $('material'), density: $('density'), scrap: $('scrap'), cost: $('cost'), costUnit: $('costUnit'), layer: $('layer'),
     tbody: $('tbody'), tfoot: $('tfoot'), empty: $('empty'), summary: $('summary'),
     csv: $('csvBtn'), pdf: $('pdfBtn'), print: $('printBtn'), printinfo: $('printinfo')
@@ -58,13 +59,17 @@
     el.layer.value = s.layer != null ? s.layer : '0';
     el.priceHole.value = s.priceHole != null ? s.priceHole : '0';
     el.priceSlot.value = s.priceSlot != null ? s.priceSlot : '0';
+    el.priceBend.value = s.priceBend != null ? s.priceBend : '0';
+    el.dataPrep.value = s.dataPrep != null ? s.dataPrep : '0';
+    el.bends.value = '0';
   }
   function saveSettings() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
         material: el.material.value, density: el.density.value, scrap: el.scrap.value,
         cost: el.cost.value, costUnit: el.costUnit.value, layer: el.layer.value,
-        priceHole: el.priceHole.value, priceSlot: el.priceSlot.value
+        priceHole: el.priceHole.value, priceSlot: el.priceSlot.value,
+        priceBend: el.priceBend.value, dataPrep: el.dataPrep.value
       }));
     } catch (e) { /* ignorieren */ }
   }
@@ -80,11 +85,14 @@
     el.material.value = idx >= 0 ? idx : MATERIALS.length - 1;
     saveSettings(); render();
   });
-  [el.scrap, el.cost, el.priceHole, el.priceSlot].forEach(i => i.addEventListener('input', () => { saveSettings(); renderSummary(); }));
+  [el.bends, el.note].forEach(i => i.addEventListener('input', () => renderSummary()));
+  [el.scrap, el.cost, el.priceHole, el.priceSlot, el.priceBend, el.dataPrep].forEach(i => i.addEventListener('input', () => { saveSettings(); renderSummary(); }));
   el.costUnit.addEventListener('change', () => { saveSettings(); renderSummary(); });
   el.layer.addEventListener('change', () => { saveSettings(); recomputeAll(); });
   let orderAuto = true; // Auftragsname wird automatisch gesetzt, solange nicht von Hand geändert
   el.order.addEventListener('input', () => { orderAuto = !el.order.value.trim(); renderSummary(); });
+
+  function resetOrderFields() { el.note.value = ''; el.bends.value = '0'; }
 
   function setOrderFromFiles(files) {
     if (!orderAuto) return;
@@ -143,6 +151,7 @@
       rows = [];
       orderAuto = true;
       el.order.value = '';
+      resetOrderFields();
       input = input.filter(f => !zips.includes(f)).concat(fromZip);
     }
     const files = input.filter(f => /\.dxf$/i.test(f.name));
@@ -197,6 +206,7 @@
   el.clear.addEventListener('click', () => {
     rows = []; setStatus('');
     if (orderAuto) el.order.value = '';
+    resetOrderFields();
     render();
   });
 
@@ -263,9 +273,12 @@
     const perKg = el.costUnit.value === 't' ? price / 1000 : price;
     const pHole = num(el.priceHole.value) || 0, pSlot = num(el.priceSlot.value) || 0;
     const matCost = gross * perKg, holeCost = holes * pHole, slotCost = slots * pSlot;
+    const bends = Math.max(0, Math.round(num(el.bends.value) || 0)), pBend = num(el.priceBend.value) || 0;
+    const bendCost = bends * pBend, prepCost = num(el.dataPrep.value) || 0;
     return {
       kg, pcs, areaTot, bad, scrapP, scrapKg, gross, price, perKg, byThk,
-      holes, slots, pHole, pSlot, matCost, holeCost, slotCost, cost: matCost + holeCost + slotCost
+      holes, slots, pHole, pSlot, matCost, holeCost, slotCost, bends, pBend, bendCost, prepCost,
+      cost: matCost + holeCost + slotCost + bendCost + prepCost
     };
   }
 
@@ -353,6 +366,8 @@
       <div>Material: ${fmt(t.gross, 2)} kg × ${fmt(t.price, 2)} €/${unit}</div><div class="v">${fmt(t.matCost, 2)} €</div>
       <div>Bohrungen: ${t.holes} Stk × ${fmt(t.pHole, 2)} €</div><div class="v">${fmt(t.holeCost, 2)} €</div>
       <div>Langlöcher: ${t.slots} Stk × ${fmt(t.pSlot, 2)} €</div><div class="v">${fmt(t.slotCost, 2)} €</div>
+      <div>Kantungen: ${t.bends} Stk × ${fmt(t.pBend, 2)} €</div><div class="v">${fmt(t.bendCost, 2)} €</div>
+      <div>Datenaufbereitung</div><div class="v">${fmt(t.prepCost, 2)} €</div>
       <div class="total">Gesamtpreis</div><div class="v total cost">${fmt(t.cost, 2)} €</div>
       ${t.bad ? `<div class="err" style="grid-column:1/-1">⚠ ${t.bad} Position(en) ohne gültige Fläche/Stärke sind nicht im Gewicht enthalten.</div>` : ''}`;
     el.byThk.innerHTML = t.byThk.length ? `<thead><tr><th class="num">Stärke</th><th class="num">Pos.</th><th class="num">Stück</th><th class="num c-a">Fläche m²</th><th class="num">Gewicht kg</th><th class="num">inkl. Verschnitt kg</th></tr></thead>
@@ -368,7 +383,8 @@
     const kopf = (F.logo || adr.length) ? `<div class="briefkopf">${F.logo ? `<img src="${F.logo}" alt="">` : '<span></span>'}` +
       `<div class="adr">${adr.map((l, i) => i === 0 ? `<b>${esc(l)}</b>` : esc(l)).join('<br>')}</div></div>` : '';
     el.printinfo.innerHTML = kopf + `<b style="font-size:18px">${order ? 'Auftrag: ' + esc(order) : 'DXF Gewichtsberechnung'}</b><br>${new Date().toLocaleDateString('de-DE')}<br>
-      Material: ${esc(m.d ? m.name : 'Benutzerdefiniert')}, spez. Gewicht ${esc(el.density.value)} kg/dm³`;
+      Material: ${esc(m.d ? m.name : 'Benutzerdefiniert')}, spez. Gewicht ${esc(el.density.value)} kg/dm³` +
+      (el.note.value.trim() ? `<br><b>Notiz:</b> ${esc(el.note.value.trim())}` : '');
   }
 
   el.tbody.addEventListener('input', (e) => {
@@ -397,7 +413,9 @@
     const order = el.order.value.trim();
     const E = (label, val) => ['', q(label), '', '', '', '', '', '', '', '', val].join(';');
     const lines = [];
-    if (order) lines.push(['Auftrag', q(order)].join(';'), '');
+    if (order) lines.push(['Auftrag', q(order)].join(';'));
+    if (el.note.value.trim()) lines.push(['Notiz', q(el.note.value.trim())].join(';'));
+    if (order || el.note.value.trim()) lines.push('');
     lines.push(['Pos', 'Datei', 'Stück', 'Stärke mm', 'Bohrungen/Stk', 'Langlöcher/Stk', 'Breite mm', 'Höhe mm', 'Fläche/Stk m²', 'Gewicht/Stk kg', 'Gesamt kg'].join(';'));
     for (const r of rows) {
       const k = calcRow(r);
@@ -413,6 +431,8 @@
     lines.push(E('Materialkosten (' + c(t.price, 2) + ' €/' + el.costUnit.value + ')', c(t.matCost, 2)));
     lines.push(E('Bohrungen ' + t.holes + ' Stk × ' + c(t.pHole, 2) + ' €', c(t.holeCost, 2)));
     lines.push(E('Langlöcher ' + t.slots + ' Stk × ' + c(t.pSlot, 2) + ' €', c(t.slotCost, 2)));
+    lines.push(E('Kantungen ' + t.bends + ' Stk × ' + c(t.pBend, 2) + ' €', c(t.bendCost, 2)));
+    lines.push(E('Datenaufbereitung €', c(t.prepCost, 2)));
     lines.push(E('Gesamtpreis €', c(t.cost, 2)));
     lines.push(E('Spez. Gewicht kg/dm³', c(num(el.density.value), 3)));
     const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -514,7 +534,14 @@
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
     doc.text(new Date().toLocaleDateString('de-DE'), W - M, ty, { align: 'right' });
     doc.text(`Material: ${m.d ? m.name : 'Benutzerdefiniert'}  ·  spez. Gewicht ${el.density.value} kg/dm³  ·  Verschnitt ${fmt(t.scrapP, t.scrapP % 1 ? 1 : 0)} %  ·  ` +
-      `Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €`, M, ty + 6);
+      `Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €  ·  Kantung ${fmt(t.pBend, 2)} €`, M, ty + 6);
+    const note = el.note.value.trim();
+    if (note) {
+      doc.setFont('helvetica', 'bold'); doc.text('Notiz:', M, ty + 11);
+      doc.setFont('helvetica', 'normal');
+      doc.text(doc.splitTextToSize(note, W - 2 * M - 12)[0], M + 11, ty + 11);
+      ty += 5;
+    }
 
     const head = [['Bild', 'Pos.', 'Datei / Ausschnitte', 'Stück', 'Stärke\nmm', 'Bohr.\n/Stk', 'Langl.\n/Stk', 'Abmessung\nmm', 'Fläche/Stk\nm²', 'Gewicht/Stk\nkg', 'Gesamt\nkg']];
     const body = rows.map(r => {
@@ -571,6 +598,8 @@
       ['Material: ' + fmt(t.gross, 2) + ' kg × ' + fmt(t.price, 2) + ' €/' + unit, fmt(t.matCost, 2) + ' €'],
       ['Bohrungen: ' + t.holes + ' Stk × ' + fmt(t.pHole, 2) + ' €', fmt(t.holeCost, 2) + ' €'],
       ['Langlöcher: ' + t.slots + ' Stk × ' + fmt(t.pSlot, 2) + ' €', fmt(t.slotCost, 2) + ' €'],
+      ['Kantungen: ' + t.bends + ' Stk × ' + fmt(t.pBend, 2) + ' €', fmt(t.bendCost, 2) + ' €'],
+      ['Datenaufbereitung', fmt(t.prepCost, 2) + ' €'],
       ['Gesamtpreis', fmt(t.cost, 2) + ' €']
     ];
     autoTable(doc, {
@@ -579,8 +608,9 @@
       columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
       body: sumRows,
       didParseCell: (d) => {
-        if (d.row.index === 2 || d.row.index === 6) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fontSize = 11; }
-        if (d.row.index === 6) { d.cell.styles.fillColor = [235, 240, 246]; d.cell.styles.textColor = blue; }
+        const last = sumRows.length - 1;
+        if (d.row.index === 2 || d.row.index === last) { d.cell.styles.fontStyle = 'bold'; d.cell.styles.fontSize = 11; }
+        if (d.row.index === last) { d.cell.styles.fillColor = [235, 240, 246]; d.cell.styles.textColor = blue; }
       }
     });
     if (t.bad) {
@@ -594,7 +624,7 @@
       doc.setPage(i);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120);
       const H = doc.internal.pageSize.getHeight();
-      doc.text((order ? order + '  ·  ' : '') + 'DXF Gewichtsrechner', M, H - 7);
+      doc.text((order ? order + '  ·  ' : '') + (adr[0] || 'DXF Gewichtsrechner'), M, H - 7);
       doc.text(`Seite ${i} von ${pages}`, W - M, H - 7, { align: 'right' });
       doc.setTextColor(0);
     }

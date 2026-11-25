@@ -175,6 +175,9 @@ tfoot td { font-weight: 600; border-bottom: none; }
     <label class="f" style="margin-bottom:10px">Auftrag (wird aus dem Ordnernamen übernommen)
       <input id="order" type="text" placeholder="Auftragsname">
     </label>
+    <label class="f" style="margin-bottom:10px">Notiz
+      <input id="note" type="text" maxlength="200" placeholder="z. B. Liefertermin, Ansprechpartner …">
+    </label>
     <div class="row">
       <label class="btn" for="dirInput">📁 Ordner wählen</label>
       <input id="dirInput" type="file" webkitdirectory directory multiple>
@@ -216,6 +219,18 @@ tfoot td { font-weight: 600; border-bottom: none; }
       </label>
       <label class="f">Layer der Kontur
         <input id="layer" type="text">
+      </label>
+    </div>
+    <h3 class="sub">Zusatzkosten für diesen Auftrag</h3>
+    <div class="grid">
+      <label class="f">Kantungen (Anzahl gesamt)
+        <input id="bends" type="text" inputmode="numeric">
+      </label>
+      <label class="f">Preis je Kantung (€)
+        <input id="priceBend" type="text" inputmode="decimal">
+      </label>
+      <label class="f">Datenaufbereitung (€)
+        <input id="dataPrep" type="text" inputmode="decimal">
       </label>
     </div>
   </section>

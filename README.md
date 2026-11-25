@@ -24,6 +24,10 @@ Gesamtgewicht, Verschnitt und Kosten.
   gezeichnet. Rechteckige oder sonstige Ausschnitte zählen nicht dazu. Anzahl je Stück ist in der Tabelle änderbar.
   Im Vorschaubild sind Bohrungen grün und Langlöcher orange markiert.
 - **Aufpreis je Bohrung** und **je Langloch** frei eingebbar; im Gesamtpreis werden Anzahl und Kosten einzeln aufgeführt.
+- **Zusatzkosten je Auftrag:** Kantungen (Anzahl × Preis) und Datenaufbereitung (€), im Gesamtpreis einzeln aufgeführt.
+  Preis je Kantung und Datenaufbereitung werden gespeichert, Anzahl Kantungen und Notiz gelten nur für den aktuellen Auftrag.
+- **Notiz:** einzeiliges Freitextfeld, erscheint in PDF, Ausdruck und CSV.
+- **Briefkopf** mit Firmenlogo und Adresse in PDF und Ausdruck (Daten in `firma.js`, Original-Logo in `firma/logo.jpg`).
 - **Zusammenfassung nach Materialstärke** (Stück, Fläche, Gewicht, Gewicht inkl. Verschnitt).
 - Gewicht = Fläche × Stärke × spezifisches Gewicht (Materialauswahl oder eigener Wert in kg/dm³).
 - Tabelle aller Positionen mit Vorschaubild, Summe unten.
