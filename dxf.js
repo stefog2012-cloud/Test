@@ -528,6 +528,47 @@
     return { type: 'lang', w: 2 * r, l: s + 2 * r };
   }
 
+  // Konvexe Hülle (Monotone Chain)
+  function convexHull(points) {
+    const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (p.length < 3) return p;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [], upper = [];
+    for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
+    for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
+    upper.pop(); lower.pop();
+    return lower.concat(upper);
+  }
+
+  // Kleinstes umschließendes Rechteck (eine Rechteckseite liegt immer auf einer Hüllkante)
+  function minAreaRect(points) {
+    const h = convexHull(points);
+    if (h.length < 3) return null;
+    let best = null;
+    for (let i = 0; i < h.length; i++) {
+      const a = h[i], b = h[(i + 1) % h.length];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 1e-12) continue;
+      const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+      let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+      for (const q of h) {
+        const u = q[0] * ux + q[1] * uy, v = -q[0] * uy + q[1] * ux;
+        if (u < minU) minU = u; if (u > maxU) maxU = u; if (v < minV) minV = v; if (v > maxV) maxV = v;
+      }
+      const area = (maxU - minU) * (maxV - minV);
+      if (!best || area < best.area - 1e-9) best = { area, ux, uy, minU, maxU, minV, maxV };
+    }
+    const { ux, uy, minU, maxU, minV, maxV } = best;
+    const P = (u, v) => [u * ux - v * uy, u * uy + v * ux];
+    const s1 = maxU - minU, s2 = maxV - minV;
+    return {
+      area: best.area,
+      length: Math.max(s1, s2), width: Math.min(s1, s2),
+      angle: ((Math.atan2(uy, ux) * 180 / Math.PI) % 180 + 180) % 180,
+      corners: [P(minU, minV), P(maxU, minV), P(maxU, maxV), P(minU, maxV)]
+    };
+  }
+
   /**
    * Berechnet die Fläche einer DXF-Datei.
    * @param {string} text DXF-Inhalt
@@ -592,8 +633,11 @@
     if (loops.length) {
       bb = loops.filter(l => l.depth === 0).map(l => l.bb).reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
     }
+    const outerPts = [];
+    loops.filter(l => l.depth === 0).forEach(l => { for (const q of l.pts) outerPts.push(q); });
+    const rect = outerPts.length >= 3 ? minAreaRect(outerPts) : null;
     return {
-      area, outer, holes, round, slots, other, holeList,
+      area, outer, holes, round, slots, other, holeList, rect,
       width: bb[2] - bb[0], height: bb[3] - bb[1], bbox: bb,
       unclosed: ch.unclosed.length,
       loops: loops.map(l => ({ pts: l.pts, depth: l.depth, hole: l.hole })),

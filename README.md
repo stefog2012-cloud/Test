@@ -29,6 +29,9 @@ Gesamtgewicht, Verschnitt und Kosten.
 - **Notiz:** einzeiliges Freitextfeld, erscheint in PDF, Ausdruck und CSV.
 - **Briefkopf** mit Firmenlogo und Adresse in PDF und Ausdruck (Daten in `firma.js`, Original-Logo in `firma/logo.jpg`).
 - **Zusammenfassung nach Materialstärke** (Stück, Fläche, Gewicht, Gewicht inkl. Verschnitt).
+- **Flächenberechnung wählbar:** *Netto-Kontur* (Außenkontur minus Löcher) oder *kleinstes umschließendes Rechteck*
+  (auch schräg liegend, Löcher nicht abgezogen, deckt einen Teil des Verschnitts ab). Das Rechteck wird im
+  Vorschaubild rot gestrichelt angezeigt. Die Spalte „Abmessung“ zeigt immer Länge × Breite dieses Rechtecks.
 - Gewicht = Fläche × Stärke × spezifisches Gewicht (Materialauswahl oder eigener Wert in kg/dm³).
 - Tabelle aller Positionen mit Vorschaubild, Summe unten.
 - **Verschnitt in %** und **Kosten in €/kg oder €/t** frei eingebbar.

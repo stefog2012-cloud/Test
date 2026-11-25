@@ -16,6 +16,7 @@
   const $ = (id) => document.getElementById(id);
   const el = {
     dir: $('dirInput'), files: $('fileInput'), clear: $('clearBtn'), drop: $('drop'), status: $('status'),
+    areaMode: $('areaMode'), areaHead: $('areaHead'),
     order: $('order'), note: $('note'), bends: $('bends'), priceBend: $('priceBend'), dataPrep: $('dataPrep'),
     priceHole: $('priceHole'), priceSlot: $('priceSlot'), byThk: $('byThk'),
     material: $('material'), density: $('density'), scrap: $('scrap'), cost: $('cost'), costUnit: $('costUnit'), layer: $('layer'),
@@ -62,6 +63,7 @@
     el.priceBend.value = s.priceBend != null ? s.priceBend : '0';
     el.dataPrep.value = s.dataPrep != null ? s.dataPrep : '0';
     el.bends.value = '0';
+    el.areaMode.value = s.areaMode === 'rect' ? 'rect' : 'contour';
   }
   function saveSettings() {
     try {
@@ -69,7 +71,7 @@
         material: el.material.value, density: el.density.value, scrap: el.scrap.value,
         cost: el.cost.value, costUnit: el.costUnit.value, layer: el.layer.value,
         priceHole: el.priceHole.value, priceSlot: el.priceSlot.value,
-        priceBend: el.priceBend.value, dataPrep: el.dataPrep.value
+        priceBend: el.priceBend.value, dataPrep: el.dataPrep.value, areaMode: el.areaMode.value
       }));
     } catch (e) { /* ignorieren */ }
   }
@@ -89,6 +91,9 @@
   [el.scrap, el.cost, el.priceHole, el.priceSlot, el.priceBend, el.dataPrep].forEach(i => i.addEventListener('input', () => { saveSettings(); renderSummary(); }));
   el.costUnit.addEventListener('change', () => { saveSettings(); renderSummary(); });
   el.layer.addEventListener('change', () => { saveSettings(); recomputeAll(); });
+  el.areaMode.addEventListener('change', () => { saveSettings(); render(); });
+  const rectMode = () => el.areaMode.value === 'rect';
+  const areaLabel = () => rectMode() ? 'Rechteck' : 'Netto-Kontur';
   let orderAuto = true; // Auftragsname wird automatisch gesetzt, solange nicht von Hand geändert
   el.order.addEventListener('input', () => { orderAuto = !el.order.value.trim(); renderSummary(); });
 
@@ -245,7 +250,8 @@
   // ---------- Berechnung ----------
   function calcRow(r) {
     const dens = num(el.density.value);
-    const area = r.res && !r.error ? r.res.area : NaN; // mm²
+    const ok = r.res && !r.error;
+    const area = !ok ? NaN : (rectMode() ? (r.res.rect ? r.res.rect.area : NaN) : r.res.area); // mm²
     const kgPc = area * r.thk * dens / 1e6;            // mm²·mm = mm³; /1000 = cm³; ·g/cm³ = g; /1000 = kg
     return { area, kgPc, kgTot: kgPc * r.qty };
   }
@@ -283,9 +289,21 @@
   }
 
   // ---------- Darstellung ----------
+  function dimText(r) {
+    if (!r.res || r.error) return '–';
+    const q = r.res.rect;
+    return q ? fmt(q.length, 1) + ' × ' + fmt(q.width, 1) : fmt(r.res.width, 1) + ' × ' + fmt(r.res.height, 1);
+  }
+  // Ausschnitt für Vorschaubild (im Rechteck-Modus inkl. gedrehtem Rechteck)
+  function viewBox(res) {
+    let [x0, y0, x1, y1] = res.bbox;
+    if (rectMode() && res.rect) for (const [x, y] of res.rect.corners) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    return [x0, y0, x1, y1];
+  }
+
   function thumb(res) {
     if (!res || !res.loops.length) return '';
-    const [x0, y0, x1, y1] = res.bbox;
+    const [x0, y0, x1, y1] = viewBox(res);
     const w = Math.max(x1 - x0, 1e-6), h = Math.max(y1 - y0, 1e-6);
     const pathOf = (l) => {
       const step = Math.max(1, Math.floor(l.pts.length / 400));
@@ -301,10 +319,12 @@
     const hl = res.loops.filter(l => l.hole === 'lang').map(pathOf).join('');
     const pad = Math.max(w, h) * 0.04;
     return `<svg class="thumb" viewBox="${-pad} ${-pad} ${w + 2 * pad} ${h + 2 * pad}" preserveAspectRatio="xMidYMid meet"><path d="${all}"/>` +
-      (hr ? `<path class="h-rund" d="${hr}"/>` : '') + (hl ? `<path class="h-lang" d="${hl}"/>` : '') + '</svg>';
+      (hr ? `<path class="h-rund" d="${hr}"/>` : '') + (hl ? `<path class="h-lang" d="${hl}"/>` : '') +
+      (rectMode() && res.rect ? `<path class="h-rect" d="${pathOf({ pts: res.rect.corners })}"/>` : '') + '</svg>';
   }
 
   function render() {
+    el.areaHead.textContent = rectMode() ? 'Rechteck/Stk m²' : 'Fläche/Stk m²';
     el.empty.style.display = rows.length ? 'none' : '';
     el.tbody.innerHTML = rows.map(r => {
       const c = calcRow(r);
@@ -330,8 +350,8 @@
         <td class="num c-thk" data-l="Stärke mm"><input class="thk ${thkBad ? 'bad' : ''}" data-f="thk" inputmode="decimal" value="${r.thk != null ? fmt(r.thk, r.thk % 1 ? 2 : 0) : ''}" placeholder="mm"></td>
         <td class="num c-hole" data-l="Bohrungen/Stk"><input class="cnt" data-f="nHole" inputmode="numeric" value="${r.nHole || 0}"></td>
         <td class="num c-slot" data-l="Langlöcher/Stk"><input class="cnt" data-f="nSlot" inputmode="numeric" value="${r.nSlot || 0}"></td>
-        <td class="num c-dim" data-l="Abmessung mm">${r.res && !r.error ? fmt(r.res.width, 1) + ' × ' + fmt(r.res.height, 1) : '–'}</td>
-        <td class="num c-area" data-l="Fläche/Stk m²">${fmt(c.area / 1e6, 4)}</td>
+        <td class="num c-dim" data-l="Abmessung mm">${dimText(r)}</td>
+        <td class="num c-area" data-l="${rectMode() ? 'Rechteck/Stk m²' : 'Fläche/Stk m²'}">${fmt(c.area / 1e6, 4)}</td>
         <td class="num c-pc" data-l="Gewicht/Stk kg">${fmt(c.kgPc, 3)}</td>
         <td class="num c-tot" data-l="Gesamt kg"><b>${fmt(c.kgTot, 2)}</b></td>
         <td class="noprint c-del"><button class="del" title="Entfernen" data-del="${r.id}">✕</button></td>
@@ -383,7 +403,7 @@
     const kopf = (F.logo || adr.length) ? `<div class="briefkopf">${F.logo ? `<img src="${F.logo}" alt="">` : '<span></span>'}` +
       `<div class="adr">${adr.map((l, i) => i === 0 ? `<b>${esc(l)}</b>` : esc(l)).join('<br>')}</div></div>` : '';
     el.printinfo.innerHTML = kopf + `<b style="font-size:18px">${order ? 'Auftrag: ' + esc(order) : 'DXF Gewichtsberechnung'}</b><br>${new Date().toLocaleDateString('de-DE')}<br>
-      Material: ${esc(m.d ? m.name : 'Benutzerdefiniert')}, spez. Gewicht ${esc(el.density.value)} kg/dm³` +
+      Material: ${esc(m.d ? m.name : 'Benutzerdefiniert')}, spez. Gewicht ${esc(el.density.value)} kg/dm³, Flächenberechnung: ${areaLabel()}` +
       (el.note.value.trim() ? `<br><b>Notiz:</b> ${esc(el.note.value.trim())}` : '');
   }
 
@@ -416,10 +436,10 @@
     if (order) lines.push(['Auftrag', q(order)].join(';'));
     if (el.note.value.trim()) lines.push(['Notiz', q(el.note.value.trim())].join(';'));
     if (order || el.note.value.trim()) lines.push('');
-    lines.push(['Pos', 'Datei', 'Stück', 'Stärke mm', 'Bohrungen/Stk', 'Langlöcher/Stk', 'Breite mm', 'Höhe mm', 'Fläche/Stk m²', 'Gewicht/Stk kg', 'Gesamt kg'].join(';'));
+    lines.push(['Pos', 'Datei', 'Stück', 'Stärke mm', 'Bohrungen/Stk', 'Langlöcher/Stk', 'Länge mm', 'Breite mm', (rectMode() ? 'Rechteck/Stk m²' : 'Fläche/Stk m²'), 'Gewicht/Stk kg', 'Gesamt kg'].join(';'));
     for (const r of rows) {
       const k = calcRow(r);
-      lines.push([q(r.pos), q(r.name), r.qty, c(r.thk, 2), r.nHole || 0, r.nSlot || 0, r.res ? c(r.res.width, 1) : '', r.res ? c(r.res.height, 1) : '',
+      lines.push([q(r.pos), q(r.name), r.qty, c(r.thk, 2), r.nHole || 0, r.nSlot || 0, r.res && r.res.rect ? c(r.res.rect.length, 1) : '', r.res && r.res.rect ? c(r.res.rect.width, 1) : '',
         c(k.area / 1e6, 6), c(k.kgPc, 3), c(k.kgTot, 3)].join(';'));
     }
     lines.push('', 'Zusammenfassung nach Materialstärke', ['Stärke mm', 'Positionen', 'Stück', 'Fläche m²', 'Gewicht kg', 'inkl. Verschnitt kg'].join(';'));
@@ -435,6 +455,7 @@
     lines.push(E('Datenaufbereitung €', c(t.prepCost, 2)));
     lines.push(E('Gesamtpreis €', c(t.cost, 2)));
     lines.push(E('Spez. Gewicht kg/dm³', c(num(el.density.value), 3)));
+    lines.push(E('Flächenberechnung', areaLabel()));
     const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -449,7 +470,7 @@
   // ---------- PDF ----------
   function drawThumbPdf(doc, res, x, y, w, h) {
     if (!res || !res.loops.length) return;
-    const [x0, y0, x1, y1] = res.bbox;
+    const [x0, y0, x1, y1] = viewBox(res);
     const bw = Math.max(x1 - x0, 1e-6), bh = Math.max(y1 - y0, 1e-6);
     const sc = Math.min(w / bw, h / bh);
     const ox = x + (w - bw * sc) / 2, oy = y + (h - bh * sc) / 2;
@@ -475,6 +496,14 @@
       doc.setDrawColor(col[0], col[1], col[2]);
       ls.forEach(trace);
       doc.stroke();
+    }
+    if (rectMode() && res.rect) {
+      doc.setLineWidth(0.3);
+      doc.setDrawColor(190, 30, 45);
+      doc.setLineDashPattern([1, 0.8], 0);
+      trace({ pts: res.rect.corners });
+      doc.stroke();
+      doc.setLineDashPattern([], 0);
     }
   }
 
@@ -534,7 +563,7 @@
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
     doc.text(new Date().toLocaleDateString('de-DE'), W - M, ty, { align: 'right' });
     doc.text(`Material: ${m.d ? m.name : 'Benutzerdefiniert'}  ·  spez. Gewicht ${el.density.value} kg/dm³  ·  Verschnitt ${fmt(t.scrapP, t.scrapP % 1 ? 1 : 0)} %  ·  ` +
-      `Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €  ·  Kantung ${fmt(t.pBend, 2)} €`, M, ty + 6);
+      `Fläche: ${areaLabel()}  ·  Preis ${fmt(t.price, 2)} €/${unit}  ·  Bohrung ${fmt(t.pHole, 2)} €  ·  Langloch ${fmt(t.pSlot, 2)} €  ·  Kantung ${fmt(t.pBend, 2)} €`, M, ty + 6);
     const note = el.note.value.trim();
     if (note) {
       doc.setFont('helvetica', 'bold'); doc.text('Notiz:', M, ty + 11);
@@ -543,13 +572,13 @@
       ty += 5;
     }
 
-    const head = [['Bild', 'Pos.', 'Datei / Ausschnitte', 'Stück', 'Stärke\nmm', 'Bohr.\n/Stk', 'Langl.\n/Stk', 'Abmessung\nmm', 'Fläche/Stk\nm²', 'Gewicht/Stk\nkg', 'Gesamt\nkg']];
+    const head = [['Bild', 'Pos.', 'Datei / Ausschnitte', 'Stück', 'Stärke\nmm', 'Bohr.\n/Stk', 'Langl.\n/Stk', 'Abmessung\nmm', (rectMode() ? 'Rechteck/Stk\nm²' : 'Fläche/Stk\nm²'), 'Gewicht/Stk\nkg', 'Gesamt\nkg']];
     const body = rows.map(r => {
       const c = calcRow(r);
       const info = holeText(r);
       return ['', String(r.pos), r.name + (info ? '\n' + info : ''), r.qty, r.thk > 0 ? fmt(r.thk, r.thk % 1 ? 2 : 0) : '–',
         r.nHole || 0, r.nSlot || 0,
-        r.res && !r.error ? fmt(r.res.width, 1) + ' × ' + fmt(r.res.height, 1) : '–',
+        dimText(r),
         fmt(c.area / 1e6, 4), fmt(c.kgPc, 3), fmt(c.kgTot, 2)];
     });
     const foot = [['', 'Summe', rows.length + ' Positionen', t.pcs, '', t.holes, t.slots, '', fmt(t.areaTot / 1e6, 3), '', fmt(t.kg, 2)]];

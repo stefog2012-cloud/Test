@@ -77,6 +77,7 @@ table.bythk tfoot td { border-top: 2px solid var(--text); }
 .summary .sep { grid-column: 1 / -1; border-top: 1px solid var(--line); margin: 4px 0; }
 .thumb path.h-rund { fill: none; stroke: #16a34a; stroke-width: 2; }
 .thumb path.h-lang { fill: none; stroke: #d97706; stroke-width: 2; }
+.thumb path.h-rect { fill: none; stroke: #be1e2d; stroke-width: 1.2; stroke-dasharray: 3 2; }
 td input.bad { border-color: var(--err); background: var(--errbg); }
 td.file { min-width: 170px; max-width: 240px; white-space: normal; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; }
 th { white-space: normal; }
@@ -134,6 +135,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
   .thumb path { fill: #dbe7f3 !important; stroke: #1f4e79 !important; }
   .thumb path.h-rund { fill: none !important; stroke: #16a34a !important; }
   .thumb path.h-lang { fill: none !important; stroke: #d97706 !important; }
+  .thumb path.h-rect { fill: none !important; stroke: #be1e2d !important; }
   :root {
     --bg: #fff; --card: #fff; --text: #000; --muted: #333; --line: #bbb;
     --accent: #1f4e79; --accent2: #1f4e79; --warn: #9a4a00; --err: #b91c1c; --errbg: #fff;
@@ -217,6 +219,12 @@ tfoot td { font-weight: 600; border-bottom: none; }
       <label class="f">Aufpreis je Langloch (€/Stk)
         <input id="priceSlot" type="text" inputmode="decimal">
       </label>
+      <label class="f">Flächenberechnung
+        <select id="areaMode">
+          <option value="contour">Netto-Kontur (Löcher abgezogen)</option>
+          <option value="rect">Kleinstes umschließendes Rechteck</option>
+        </select>
+      </label>
       <label class="f">Layer der Kontur
         <input id="layer" type="text">
       </label>
@@ -257,7 +265,7 @@ tfoot td { font-weight: 600; border-bottom: none; }
             <th class="num" title="Rundlöcher je Stück">Bohr./Stk</th>
             <th class="num" title="Langlöcher je Stück">Langl./Stk</th>
             <th class="num">Abmessung mm</th>
-            <th class="num">Fläche/Stk m²</th>
+            <th class="num" id="areaHead">Fläche/Stk m²</th>
             <th class="num">Gewicht/Stk kg</th>
             <th class="num">Gesamt kg</th>
             <th class="noprint"></th>
