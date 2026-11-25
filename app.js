@@ -63,7 +63,8 @@
     el.priceBend.value = s.priceBend != null ? s.priceBend : '0';
     el.dataPrep.value = s.dataPrep != null ? s.dataPrep : '0';
     el.bends.value = '0';
-    el.areaMode.value = s.areaMode === 'rect' ? 'rect' : 'contour';
+    // Standard: Rechteck (eigener Schlüssel, damit alte gespeicherte Werte einmalig auf Rechteck umgestellt werden)
+    el.areaMode.value = s.areaModeV2 === 'contour' ? 'contour' : 'rect';
   }
   function saveSettings() {
     try {
@@ -71,7 +72,7 @@
         material: el.material.value, density: el.density.value, scrap: el.scrap.value,
         cost: el.cost.value, costUnit: el.costUnit.value, layer: el.layer.value,
         priceHole: el.priceHole.value, priceSlot: el.priceSlot.value,
-        priceBend: el.priceBend.value, dataPrep: el.dataPrep.value, areaMode: el.areaMode.value
+        priceBend: el.priceBend.value, dataPrep: el.dataPrep.value, areaModeV2: el.areaMode.value
       }));
     } catch (e) { /* ignorieren */ }
   }
