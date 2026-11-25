@@ -36,6 +36,20 @@ header { background: var(--accent); color: #fff; padding: 14px 16px; }
 @media (prefers-color-scheme: dark) { header { background: #1f3550; } }
 header h1 { margin: 0; font-size: 20px; font-weight: 650; }
 header p { margin: 2px 0 0; opacity: .85; font-size: 13px; }
+.hwrap { max-width: 1440px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.hlogo { background: #fff; border-radius: 8px; padding: 6px 10px; line-height: 0; }
+.hlogo img { height: 52px; width: auto; display: block; }
+.htext { flex: 1 1 200px; }
+.hadr { font-size: 12px; line-height: 1.4; text-align: right; opacity: .9; }
+@media (max-width: 720px) {
+  header { padding: 10px 12px; }
+  .hwrap { flex-wrap: nowrap; gap: 12px; }
+  .hlogo { padding: 4px 6px; border-radius: 6px; }
+  .hlogo img { height: 34px; }
+  .htext { flex: 1 1 auto; min-width: 0; }
+  header h1 { font-size: 17px; }
+  header p, .hadr { display: none; }
+}
 main { max-width: 1440px; margin: 0 auto; padding: 16px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
 .card h2 { margin: 0 0 10px; font-size: 16px; }
@@ -168,8 +182,14 @@ tfoot td { font-weight: 600; border-bottom: none; }
 </head>
 <body>
 <header>
-  <h1>DXF Gewichtsrechner</h1>
-  <p>Fläche · Gewicht · Verschnitt · Kosten aus DXF-Dateien</p>
+  <div class="hwrap">
+    <div id="hlogo" class="hlogo" hidden></div>
+    <div class="htext">
+      <h1>DXF Gewichtsrechner</h1>
+      <p>Fläche · Gewicht · Verschnitt · Kosten aus DXF-Dateien</p>
+    </div>
+    <div id="hadr" class="hadr" hidden></div>
+  </div>
 </header>
 <main>
   <section class="card noprint">

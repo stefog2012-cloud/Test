@@ -698,6 +698,16 @@
     } catch (e) { setStatus('Geteilte Dateien konnten nicht gelesen werden.'); }
   }
 
+  // ---------- Kopfzeile mit Firmenlogo und Adresse ----------
+  (function brand() {
+    const F = window.FIRMA || {};
+    const adr = (F.adresse || []).filter(Boolean);
+    const lg = document.getElementById('hlogo'), ad = document.getElementById('hadr');
+    if (F.logo) { lg.innerHTML = `<img src="${F.logo}" alt="${esc(adr[0] || 'Logo')}">`; lg.hidden = false; }
+    if (adr.length) { ad.innerHTML = adr.map((l, i) => i === 0 ? `<b>${esc(l)}</b>` : esc(l)).join('<br>'); ad.hidden = false; }
+    if (adr[0]) document.title = 'DXF Gewichtsrechner – ' + adr[0];
+  })();
+
   // ---------- Start ----------
   loadSettings();
   render();

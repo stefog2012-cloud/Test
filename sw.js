@@ -1,5 +1,5 @@
 // Offline-Cache. Bei Änderungen an der App VERSION erhöhen.
-const VERSION = 'dxfgewicht-v9';
+const VERSION = 'dxfgewicht-v10';
 const INBOX = 'share-inbox';
 const FILES = ['./', 'index.html', 'app.js', 'dxf.js', 'firma.js', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
   'lib/fflate.min.js', 'lib/jspdf.umd.min.js', 'lib/jspdf.plugin.autotable.min.js'];
